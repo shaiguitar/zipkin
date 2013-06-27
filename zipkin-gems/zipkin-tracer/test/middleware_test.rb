@@ -13,6 +13,10 @@ class App < Sinatra::Base
     ZipkinConfig
   end
 
+  get '/' do
+    'homepage'
+  end
+
   get '/one' do
     redirect "/prefix/two"
   end
@@ -52,9 +56,45 @@ class TestAdd < Test::Unit::TestCase
     end
   end
 
-  def test_middleware_works
-    @client.get("/one")
+  def test_apps_redirect_to_each_other
+    resp = follow_redirects(@client, @client.get("/one"))
+    assert_equal resp.body, "three"
   end
+
+  def test_headers_generated_initial_request
+    resp = @client.get("/")
+    assert_equal resp.body, "homepage"
+    assert resp.headers["X-B3-TraceId"], "no header!"
+  #TODO The other special headers are X-B3-TraceId, X-B3-SpanId, X-B3-Sampled, and X-B3-Flags, though the names are transformed by Rack.
+  # parent id nil, span id smth, sampled, flags...
+  end
+
+  #def test_headers_second_app
+  #TODO
+    # trace_id the same, parent id not nil, span id smth, sampled, flags...
+    ## parent span id
+    ## other info passed correctly
+    #assert false
+  #end
+
+  #def test_whole_trace
+  #TODO
+  #...?
+    #assert false
+  #end
+
+  private
+
+  # rack-client helper
+  def follow_redirects(client, client_resp)
+    location = client_resp.headers["Location"]
+    if location
+      resp = client.get(location)
+      client_resp = follow_redirects(client, resp)
+    end
+    return client_resp
+  end
+
 end
 
 
