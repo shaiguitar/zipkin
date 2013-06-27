@@ -12,16 +12,18 @@ class App < Sinatra::Base
   def self.config
     ZipkinConfig
   end
-
   get '/' do
     'homepage'
   end
-
   get '/one' do
     redirect "/prefix/two"
   end
   get '/three' do
     "three"
+  end
+
+  get '/A' do
+    redirect '/prefix/B'
   end
 end
 
@@ -33,6 +35,10 @@ class AppTwo < Sinatra::Base
 
   get '/two' do
     redirect "/three"
+  end
+
+  get '/B' do
+    "B"
   end
 end
 
@@ -61,26 +67,32 @@ class TestAdd < Test::Unit::TestCase
     assert_equal resp.body, "three"
   end
 
-  def test_headers_generated_initial_request
+  def test_headers_initial_headers
     resp = @client.get("/")
     assert_equal resp.body, "homepage"
-    assert resp.headers["X-B3-TraceId"], "no header!"
-  #TODO The other special headers are X-B3-TraceId, X-B3-SpanId, X-B3-Sampled, and X-B3-Flags, though the names are transformed by Rack.
-  # parent id nil, span id smth, sampled, flags...
+    assert resp.headers["X-B3-TraceId"], "should be trace id header"
+    assert ! resp.headers["X-B3-ParentSpanId"], "should be no parent header"
+    assert resp.headers["X-B3-SpanId"], "should be span header"
+    #assert resp.headers["X-B3-Flags"], "flag header?"
+    #assert resp.headers["X-B3-Sampled"], "sampled header?"
   end
 
-  #def test_headers_second_app
-  #TODO
-    # trace_id the same, parent id not nil, span id smth, sampled, flags...
-    ## parent span id
-    ## other info passed correctly
-    #assert false
-  #end
+  def test_headers_one_redirect
+    resp = @client.get("/A")
+    puts resp.headers.inspect
+    orig_trace_id = resp.headers["X-B3-TraceId"]
+    resp = @client.get(resp.headers["Location"])
+    assert_equal resp.body, "B"
+    puts resp.headers.inspect
+    assert_equal resp.headers["X-B3-TraceId"], orig_trace_id
+    assert resp.headers["X-B3-ParentSpanId"], "should be no parent header"
+    assert resp.headers["X-B3-SpanId"], "should be span header"
+    #assert resp.headers["X-B3-Flags"], "flag header?"
+    #assert resp.headers["X-B3-Sampled"], "sampled header?"
+  end
 
   #def test_whole_trace
-  #TODO
-  #...?
-    #assert false
+    #TODO?
   #end
 
   private

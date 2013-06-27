@@ -67,7 +67,7 @@ module ZipkinTracer extend self
     private
 
     def zipkin_headers(id)
-      {"X-B3-TraceId" => id.trace_id}
+      {"X-B3-TraceId" => id.trace_id, "X-B3-SpanId" => id.span_id, "X-B3-ParentSpanId" => id.parent_id}
     end
 
     # thanks aaron gooch
