@@ -1,0 +1,8 @@
+gem 'rake'
+gem 'rack'
+gem 'finagle-thrift', path: "~/projects/finagle/finagle-thrift/src/main/ruby/"
+gem 'scribe' # do not using for now
+gem 'thin'
+gem 'sinatra'
+gem 'pry'
+gem 'rack-client'
