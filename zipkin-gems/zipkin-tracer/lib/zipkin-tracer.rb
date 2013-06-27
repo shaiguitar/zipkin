@@ -16,6 +16,7 @@ require 'finagle-thrift/trace'
 require 'scribe'
 
 require 'zipkin-tracer/careless_scribe'
+require 'base64'
 
 module ZipkinTracer extend self
 
