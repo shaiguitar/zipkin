@@ -27,9 +27,16 @@ module TestHelpers
 
     get '/start' do
       TestHelpers.client.get(TestHelpers.url + "/second_app/continue")
+      "made request to /second_app/continue"
+    end
+
+    get '/simple' do
+      TestHelpers.client.get(TestHelpers.url + "/third_app/end")
+      "made request to /third_app/end"
     end
 
     get '/end' do
+      "end"
     end
 
   end
@@ -40,6 +47,7 @@ module TestHelpers
     get '/continue' do
       TestHelpers.client.get(TestHelpers.url + "/first_app/end")
       TestHelpers.client.get(TestHelpers.url + "/third_app/continue")
+      "made request to /first_app/end AND /third_app/continue"
     end
 
   end
@@ -49,16 +57,29 @@ module TestHelpers
 
     get '/continue' do
       TestHelpers.client.get(TestHelpers.url + "/first_app/end")
+      "made request to /first_app/end"
+    end
+
+    get '/end' do
     end
 
   end
 
   ## web of api requests to simulate: 
+  #
   # /first_app/start
   # => /second_app/continue
   #   => /first_app/end
   #   => /third_app/continue
   #     => /first_app/end
+  #
+  # /first_app/simple
+  # => /third_app/end
+  #
+  # main assertions need to do figure 2 in
+  # http://static.googleusercontent.com/external_content/untrusted_dlcp/research.google.com/en/us/pubs/archive/36356.pdf
+  # they are: TODO
+  #
  
   class MainApplication
     def self.app
