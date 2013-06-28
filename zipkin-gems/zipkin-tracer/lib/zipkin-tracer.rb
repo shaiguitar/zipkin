@@ -16,7 +16,6 @@ require 'finagle-thrift/trace'
 require 'scribe'
 
 require 'zipkin-tracer/careless_scribe'
-require 'base64'
 
 module ZipkinTracer extend self
 
@@ -54,34 +53,13 @@ module ZipkinTracer extend self
     end
 
     def call(env)
-      id = generate_trace_id_from_headers_or_new(env)
+      id = ::Trace::TraceId.new(::Trace.generate_id, nil, ::Trace.generate_id, true, ::Trace::Flags::EMPTY)
       ::Trace.default_endpoint = ::Trace.default_endpoint.with_service_name(@service_name).with_port(@service_port)
       ::Trace.sample_rate=(@sample_rate)
-      tracing_filter(id, env) do
-        status, headers, response_body = @app.call(env)
-        headers.merge!(zipkin_headers(id))
-        [status, headers, response_body]
-      end
+      tracing_filter(id, env) { @app.call(env) }
     end
 
     private
-
-    def zipkin_headers(id)
-      {"X-B3-TraceId" => id.trace_id, "X-B3-SpanId" => id.span_id, "X-B3-ParentSpanId" => id.parent_id}
-    end
-
-    # thanks aaron gooch
-    # https://groups.google.com/forum/?fromgroups#!topic/zipkin-user/b5uRtHjoz0I
-    def generate_trace_id_from_headers_or_new(env)
-      trace_id = env['HTTP_X_B3_TRACEID'] || ::Trace.generate_id
-      span_id = ::Trace.generate_id
-      parent_id = env['HTTP_X_B3_PARENTSPANID'] || nil
-      id = ::Trace::TraceId.new(trace_id, parent_id, span_id, true, ::Trace::Flags::EMPTY) # trace_info(3), sample, debug flag
-      ::Trace.default_endpoint = ::Trace.default_endpoint.with_service_name(@service_name).with_port(@service_port)
-      ::Trace.sample_rate=(@sample_rate)
-      id
-    end
-
     def tracing_filter(trace_id, env)
       @lock.synchronize do
         ::Trace.push(trace_id)
