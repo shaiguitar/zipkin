@@ -5,17 +5,14 @@ require 'rack'
 require 'rack/client'
 
 module TestHelpers
-
   def self.client
     @client = Rack::Client.new(TestHelpers.url) do
       run MainApplication.app
     end
   end
-
   def self.url
     "http://some.place"
   end
-
   class ZipkinConfig
     def self.zipkin_tracer
       {service_name: 'some_app', service_port: 9410, sample_rate: 1, scribe_server: "127.0.0.1:9410"}
@@ -24,35 +21,29 @@ module TestHelpers
 
   class FirstApp < Sinatra::Base
     def self.config; ZipkinConfig; end
-
     get '/start' do
       TestHelpers.client.get(TestHelpers.url + "/second_app/continue")
       "made request to /second_app/continue"
     end
-
     get '/simple' do
       TestHelpers.client.get(TestHelpers.url + "/third_app/end")
       "made request to /third_app/end"
     end
-
     get '/norpc' do
+      "norpc"
     end
-
     get '/end' do
       "end"
     end
-
   end
 
   class SecondApp < Sinatra::Base
     def self.config; ZipkinConfig; end
-
     get '/continue' do
       TestHelpers.client.get(TestHelpers.url + "/first_app/end")
       TestHelpers.client.get(TestHelpers.url + "/third_app/continue")
       "made request to /first_app/end AND /third_app/continue"
     end
-
   end
 
   class ThirdApp < Sinatra::Base
@@ -61,10 +52,8 @@ module TestHelpers
       TestHelpers.client.get(TestHelpers.url + "/first_app/end")
       "made request to /first_app/end"
     end
-
     get '/end' do
     end
-
   end
 
   # main assertions need to do figure 2 in
@@ -111,5 +100,4 @@ module TestHelpers
       end
     end
   end
-
 end
