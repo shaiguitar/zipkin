@@ -5,13 +5,17 @@ class TestRackClient < Test::Unit::TestCase
 
   def setup
     @client = TestHelpers.client
+    TestHelpers.bootrelwebs
+  end
+  def teardown
+    TestHelpers.killrealwebs
   end
 
-  def test_norpc
-    resp = @client.get("/first_app/norpc")
-    # want to assert that if the client were to make another request, it would be in the same trace_id
-    tracer = @client.get_current_tracer
-    tracer.trace_id == resp.headers["X-B3-TraceId"]
+  def test_one_rpc_request
+    puts ENV.inspect
+
+    server_location = TestHelpers.first_app
+    resp = @client.get("#{server_location}/simple")
   end
 
 end

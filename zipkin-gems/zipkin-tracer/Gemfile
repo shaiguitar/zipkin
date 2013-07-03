@@ -1,3 +1,5 @@
+source "http://rubygems.org"
+
 gem 'rake'
 gem 'rack'
 gem 'finagle-thrift', path: "~/projects/finagle/finagle-thrift/src/main/ruby/"
@@ -6,3 +8,5 @@ gem 'thin'
 gem 'sinatra'
 gem 'pry'
 gem 'rack-client'
+gem 'realweb'
+gem 'redis'
