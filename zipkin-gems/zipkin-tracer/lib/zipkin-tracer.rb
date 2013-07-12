@@ -52,14 +52,40 @@ module ZipkinTracer extend self
       ::Trace.tracer = ::Trace::ZipkinTracer.new(CarelessScribe.new(scribe), scribe_max_buffer)
     end
 
+
     def call(env)
-      id = ::Trace::TraceId.new(::Trace.generate_id, nil, ::Trace.generate_id, true, ::Trace::Flags::EMPTY)
+      generate_thread_locals(env)
+      puts thread_locals.inspect
+      id = ::Trace::TraceId.new(thread_locals[:trace_id], thread_locals[:parent_id],
+                                thread_locals[:span_id], true, ::Trace::Flags::EMPTY)
       ::Trace.default_endpoint = ::Trace.default_endpoint.with_service_name(@service_name).with_port(@service_port)
       ::Trace.sample_rate=(@sample_rate)
       tracing_filter(id, env) { @app.call(env) }
     end
 
     private
+
+    def generate_thread_locals(env)
+
+      # either set from header, or generate new one
+      trace_id = (env["HTTP_X_TRACE_ID"] && !env['HTTP_X_TRACE_ID'].empty? && env["HTTP_X_TRACE_ID"].to_i)  || ::Trace.generate_id
+      # either set from header, or generate new one
+      span_id = (env["HTTP_X_SPAN_ID"] && env["HTTP_X_SPAN_ID"].to_i)  || ::Trace.generate_id
+      # parent id explicitly set by header, or it needs to be nil.
+      parent_id = (env["HTTP_X_PARENT_ID"] && !env['HTTP_X_PARENT_ID'].empty? && env["HTTP_X_PARENT_ID"].to_i)
+
+      Thread.current[:zipkin] = {
+        trace_id: trace_id,
+        span_id: span_id,
+        parent_id: parent_id,
+      }
+    end
+
+    def thread_locals
+      Thread.current[:zipkin]
+    end
+
+
     def tracing_filter(trace_id, env)
       @lock.synchronize do
         ::Trace.push(trace_id)

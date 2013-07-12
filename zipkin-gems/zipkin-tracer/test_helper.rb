@@ -12,12 +12,26 @@ require 'redis'
 
 module TestHelpers
 
-  module ForwardHeaders
-
+  class ForwardHeaders
+    def initialize(app)
+      @app = app
+      @trace_id = TestHelpers.thread_locals[:trace_id]
+      # from the client perspective it's going to start a new span, so we just generate a new span_id
+      # and use the server's current span_id for it being the parent of the next rpc request that is going to happen.
+      @parent_id = TestHelpers.thread_locals[:span_id]
+    end
+    def call(env)
+      # SET THE HEADERS SO NEXT REQUEST IT MAKES THOSE HEADERS GET PASSED
+      env["HTTP_X_TRACE_ID"] = @trace_id.to_s
+      env["HTTP_X_SPAN_ID"] = ::Trace.generate_id.to_s
+      env["HTTP_X_PARENT_ID"] = @parent_id.to_s
+      @app.call(env)
+    end
   end
 
   def self.client
     Rack::Client.new do
+      use ForwardHeaders
       run Rack::Client::Handler::NetHTTP
     end
   end
@@ -39,12 +53,18 @@ module TestHelpers
     end
   end
 
+  def self.thread_locals
+    Thread.current[:zipkin]
+  end
+
   class FirstApp < Sinatra::Base
     def self.config; ZipkinConfig.new(self); end
     get '/simple' do
       puts "handling simple"
-      #TestHelpers.client(env["HTTP_X_TRACE_ID"], env["HTTP_X_SPAN_ID"]).get(TestHelpers.second_app + "/end")
-      response = TestHelpers.client.get(TestHelpers.second_app + "/end").body
+      puts env.inspect
+      # GET THE HEADERS FROM REQUEST TO SERVER AND SEE IF WE HAVE INFOZ SO WE CAN PASS TO NEXT RPC
+      r = TestHelpers.client.get(TestHelpers.second_app + "/end")
+      response = r.body
       "made request to /third_app/end. Got response = #{response}"
     end
   end
@@ -53,6 +73,8 @@ module TestHelpers
     def self.config; ZipkinConfig.new(self); end
     get '/end' do
       puts "handling end in second app"
+      sleep 1.4
+      puts env.inspect
       "handling end in second app"
     end
   end
