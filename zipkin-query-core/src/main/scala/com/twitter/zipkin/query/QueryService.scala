@@ -357,6 +357,7 @@ class QueryService(storage: Storage, index: Index, aggregates: Aggregates, adjus
 
   def getServiceNames: Future[Set[String]] = {
     log.debug("getServiceNames")
+    log.debug("QueryPlaceThingShai")
     call("getServiceNames") {
       index.getServiceNames
     }

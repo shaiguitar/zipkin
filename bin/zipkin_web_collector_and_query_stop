@@ -1,0 +1,5 @@
+#!/bin/bash
+
+ps aux |grep collector | awk '{print $2}' | xargs kill
+ps aux |grep query | awk '{print $2}' | xargs kill
+ps aux |grep web | awk '{print $2}' | xargs kill

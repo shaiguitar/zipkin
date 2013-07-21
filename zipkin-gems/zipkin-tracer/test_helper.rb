@@ -19,14 +19,47 @@ module TestHelpers
       # from the client perspective it's going to start a new span, so we just generate a new span_id
       # and use the server's current span_id for it being the parent of the next rpc request that is going to happen.
       @parent_id = TestHelpers.thread_locals[:span_id]
+      @lock = Mutex.new
     end
+
     def call(env)
+
+      trace_id = @trace_id && @trace_id.to_s
+      parent_id = @parent_id && @parent_id.to_s
+      span_id = ::Trace.generate_id.to_s
+
       # SET THE HEADERS SO NEXT REQUEST IT MAKES THOSE HEADERS GET PASSED
-      env["HTTP_X_TRACE_ID"] = @trace_id.to_s
-      env["HTTP_X_SPAN_ID"] = ::Trace.generate_id.to_s
-      env["HTTP_X_PARENT_ID"] = @parent_id.to_s
+      env["HTTP_X_TRACE_ID"] = trace_id.to_s
+      env["HTTP_X_SPAN_ID"] = span_id.to_s
+      env["HTTP_X_PARENT_ID"] = parent_id.to_s
+
+      # we can rely on ::Trace being set, because the client using this middleware should call within the server 
+      # context, which means it has access to those thread_locals and the Trace thingie.
+      # however, it's different because CS,CR are the boundries of a new span, so we need to have that information 
+      # be correct.
+
+      id = ::Trace::TraceId.new(trace_id && trace_id.to_i, parent_id && parent_id.to_i, span_id, true, ::Trace::Flags::EMPTY)
+ #     client_tracing_filter(id, env) { @app.call(env) }
       @app.call(env)
     end
+
+    private
+
+    def client_tracing_filter(trace_id, env)
+      @lock.synchronize do
+        ::Trace.push(trace_id)
+        ::Trace.set_rpc_name(env["REQUEST_METHOD"]) # get/post and all that jazz
+        ::Trace.record(::Trace::BinaryAnnotation.new("http.uri", env["PATH_INFO"], "STRING", ::Trace.default_endpoint))
+        ::Trace.record(::Trace::Annotation.new(::Trace::Annotation::CLIENT_SEND, ::Trace.default_endpoint))
+      end
+      yield if block_given?
+    ensure
+      @lock.synchronize do
+        ::Trace.record(::Trace::Annotation.new(::Trace::Annotation::CLIENT_RECV, ::Trace.default_endpoint))
+        ::Trace.pop
+      end
+   end
+
   end
 
   def self.client
