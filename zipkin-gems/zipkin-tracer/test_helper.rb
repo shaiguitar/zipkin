@@ -38,9 +38,9 @@ module TestHelpers
       # however, it's different because CS,CR are the boundries of a new span, so we need to have that information 
       # be correct.
 
-      id = ::Trace::TraceId.new(trace_id && trace_id.to_i, parent_id && parent_id.to_i, span_id, true, ::Trace::Flags::EMPTY)
- #     client_tracing_filter(id, env) { @app.call(env) }
-      @app.call(env)
+      id = ::Trace::TraceId.new(trace_id && trace_id.to_i, parent_id && parent_id.to_i, span_id && span_id.to_i, true, ::Trace::Flags::EMPTY)
+      client_tracing_filter(id, env) { @app.call(env) }
+ #     @app.call(env)
     end
 
     private
