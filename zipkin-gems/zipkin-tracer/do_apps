@@ -2,13 +2,16 @@ if [ $1 == "stop" ]; then
   echo 'stopping'
   lsof -i :7777 | grep -v PID | awk '{print $2}' | xargs kill
   lsof -i :7778 | grep -v PID | awk '{print $2}' | xargs kill
+  lsof -i :7779 | grep -v PID | awk '{print $2}' | xargs kill
   sleep 2
   echo 'checking ports'
   lsof -i :7778
   lsof -i :7777
+  lsof -i :7779
 else
   echo 'starting'
   bundle exec shotgun first_app.ru -p 7777 &
   bundle exec shotgun second_app.ru -p 7778 &
+  bundle exec shotgun third_app.ru -p 7779 &
 fi
 

@@ -76,6 +76,9 @@ module TestHelpers
   def self.second_app
     "http://localhost:7778"
   end
+  def self.third_app
+    "http://localhost:7779"
+  end
 
   class ZipkinConfig
     def initialize(from)
@@ -98,19 +101,43 @@ module TestHelpers
       # GET THE HEADERS FROM REQUEST TO SERVER AND SEE IF WE HAVE INFOZ SO WE CAN PASS TO NEXT RPC
       r = TestHelpers.client.get(TestHelpers.second_app + "/end")
       response = r.body
-      "made request to /third_app/end. Got response = #{response}"
+      "made request to /second_app/end. Got response = #{response}"
     end
+    
+    get '/complicated' do
+      puts "handling complicated"
+      puts env.inspect
+      # GET THE HEADERS FROM REQUEST TO SERVER AND SEE IF WE HAVE INFOZ SO WE CAN PASS TO NEXT RPC
+      r = TestHelpers.client.get(TestHelpers.second_app + "/end")
+      r1 = r.body
+      r = TestHelpers.client.get(TestHelpers.third_app + "/continue")
+      r2 = r.body
+      "made request to /second_app/end. Got response = #{r1}" +\
+        "made request to /third_app/continue. Got response = #{r2}"
+    end
+
   end
 
   class SecondApp < Sinatra::Base
     def self.config; ZipkinConfig.new(self); end
     get '/end' do
       puts "handling end in second app"
-      sleep 1.4
       puts env.inspect
       "handling end in second app"
     end
   end
+
+  class ThirdApp < Sinatra::Base
+    def self.config; ZipkinConfig.new(self); end
+    get '/continue' do
+      puts "handling continue in third app"
+      puts env.inspect
+      r = TestHelpers.client.get(TestHelpers.second_app + "/end")
+      response = r.body
+      "handling continue in third app. got response from second = #{response}"
+    end
+  end
+
 
   # main assertions need to do figure 2 in
   # http://static.googleusercontent.com/external_content/untrusted_dlcp/research.google.com/en/us/pubs/archive/36356.pdf
